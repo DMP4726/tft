@@ -70,21 +70,7 @@ public class HalmaBoard {
     }
 
     // Tìm TẤT CẢ các nước đi hợp lệ của một phe trên bàn cờ
-    public List<Move> getAllValidMoves(PieceType player) {
-        List<Move> validMoves = new ArrayList<>();
-        for (int x = 0; x < SIZE; x++) {
-            for (int y = 0; y < SIZE; y++) {
-                if (grid[x][y] == player) {
-                    Point startPoint = new Point(x, y);
-                    // 1. Tìm các nước bước đơn (đi sang ô cạnh bên)
-                    getSingleSteps(startPoint, validMoves);
-                    // 2. Tìm các chuỗi nhảy liên hoàn qua đầu quân khác (Jumps)
-                    getChainJumps(startPoint, validMoves);
-                }
-            }
-        }
-        return validMoves;
-    }
+    
 
     // Logic tìm các nước đi bước đơn 1 ô xung quanh
     private void getSingleSteps(Point start, List<Move> moves) {
@@ -190,5 +176,24 @@ public class HalmaBoard {
         }
     }
     
-    
+    // TRONG FILE HalmaBoard.java
+public List<Move> getAllValidMoves(PieceType player) {
+    List<Move> validMoves = new ArrayList<>();
+    // Quét toàn bộ bàn cờ tìm quân của người chơi
+    for (int x = 0; x < SIZE; x++) {
+        for (int y = 0; y < SIZE; y++) {
+            if (grid[x][y] == player) {
+                Point startPoint = new Point(x, y);
+                
+                // --- KIỂM TRA DÒNG NÀY ---
+                // Nó bắt buộc phải tồn tại và không bị comment (//)
+                getSingleSteps(startPoint, validMoves); 
+                // -------------------------
+
+                getChainJumps(startPoint, validMoves);
+            }
+        }
+    }
+    return validMoves;
+}
 }
