@@ -25,12 +25,22 @@ public class MainMenu extends JFrame {
         // 2. Cài đặt Độ khó AI (Tùy chọn)
         JPanel settingsPanel = new JPanel();
         settingsPanel.setOpaque(false);
+
         settingsPanel.add(new JLabel("Độ khó AI: "));
-        
-        String[] difficulties = {"Dễ (Nhanh)", "Trung bình (Khuyên dùng)", "Khó (Chậm)"};
-        JComboBox<String> difficultyBox = new JComboBox<>(difficulties);
-        difficultyBox.setSelectedIndex(1); // Mặc định chọn Trung bình
+
+        String[] difficulties = {
+                "Dễ",
+                "Trung bình",
+                "Khó"
+        };
+
+        JComboBox<String> difficultyBox =
+                new JComboBox<>(difficulties);
+
+        difficultyBox.setSelectedIndex(1);
+
         settingsPanel.add(difficultyBox);
+
         add(settingsPanel);
 
         // 3. Nút PLAY GAME
@@ -92,21 +102,6 @@ public class MainMenu extends JFrame {
             
             // 5. Ép giao diện vẽ lại toàn bộ quân cờ (Quan trọng để tránh bị trống trơn)
             gameWindow.repaint();        
-        });
-    }
-
-    // Hàm main để chạy Menu thay vì chạy thẳng vào game
-    public static void main(String[] args) {
-        // Đổi giao diện trông hiện đại hơn (Tùy chọn)
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        SwingUtilities.invokeLater(() -> {
-            MainMenu menu = new MainMenu();
-            menu.setVisible(true);
         });
     }
 }

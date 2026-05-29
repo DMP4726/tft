@@ -17,6 +17,9 @@ public class HalmaGUI extends JFrame {
     private List<Move> allPlayerMoves = new ArrayList<>();
     // Danh sách lưu các ô đích hợp lệ để vẽ dấu chấm gợi ý
     private List<Point> validDestinations = new ArrayList<>();
+    private int aiDepth = 2;
+    private HalmaAI ai;
+    private boolean playerTurn = true;
 
     public HalmaGUI() {
         setTitle("Halma 16x16 - Trò chơi cờ Halma");
@@ -34,7 +37,7 @@ public class HalmaGUI extends JFrame {
      */
     private class MainMenuPanel extends JPanel {
         public MainMenuPanel() {
-            setLayout(new GridLayout(4, 1, 10, 10)); // Chia làm 4 hàng dọc cân đối
+            setLayout(new GridLayout(5, 1, 10, 10)); // Chia làm 4 hàng dọc cân đối
             setBackground(new Color(240, 248, 255)); // Màu nền xanh nhạt dễ chịu
 
             // Hàng 1: Tiêu đề Game lớn
@@ -43,18 +46,38 @@ public class HalmaGUI extends JFrame {
             titleLabel.setForeground(new Color(0, 51, 102));
             add(titleLabel);
 
-            // Hàng 2: Cài đặt chế độ chơi (Bạn đi trước đấu với AI)
+            // 2. Cài đặt Độ khó AI (Tùy chọn)
             JPanel settingsPanel = new JPanel();
             settingsPanel.setOpaque(false);
-            JLabel infoMatchLabel = new JLabel("Chế độ chơi: Bạn (Xanh dương) 🆚 AI (Đỏ)");
-            infoMatchLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-            settingsPanel.add(infoMatchLabel);
+
+            settingsPanel.add(new JLabel("Độ khó AI: "));
+
+            String[] difficulties = {
+                    "Dễ",
+                    "Trung bình",
+                    "Khó"
+            };
+
+            JComboBox<String> difficultyBox = new JComboBox<>(difficulties);
+
+            difficultyBox.setSelectedIndex(1);
+
+            settingsPanel.add(difficultyBox);
+
             add(settingsPanel);
 
-            // Hàng 3: Nút bấm PLAY GAME để vào bàn cờ
+            // Hàng 3: Cài đặt chế độ chơi (Bạn đi trước đấu với AI)
+            JPanel sPanel = new JPanel();
+            sPanel.setOpaque(false);
+            JLabel infoMatchLabel = new JLabel("Chế độ chơi: Bạn (Xanh dương) VS AI (Đỏ)");
+            infoMatchLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+            sPanel.add(infoMatchLabel);
+            add(sPanel);
+
+            // Hàng 4: Nút bấm PLAY GAME để vào bàn cờ
             JPanel playPanel = new JPanel();
             playPanel.setOpaque(false);
-            JButton playButton = new JButton("▶ PLAY GAME");
+            JButton playButton = new JButton("PLAY GAME");
             playButton.setFont(new Font("Arial", Font.BOLD, 20));
             playButton.setBackground(new Color(50, 205, 50)); // Nút màu xanh lá nổi bật
             playButton.setForeground(Color.WHITE);
@@ -63,12 +86,23 @@ public class HalmaGUI extends JFrame {
             
             // Sự kiện click nút Play
             playButton.addActionListener(e -> {
+                switch (difficultyBox.getSelectedIndex()) {
+                    case 0:
+                        aiDepth = 2;
+                        break;
+                    case 1:
+                        aiDepth = 3;
+                        break;
+                    case 2:
+                        aiDepth = 4;
+                        break;
+                }
                 startGame(); // Chuyển sang màn hình bàn cờ
             });
             playPanel.add(playButton);
             add(playPanel);
 
-            // Hàng 4: Dòng chữ thông tin chân trang
+            // Hàng 5: Dòng chữ thông tin chân trang
             JLabel footerLabel = new JLabel("Chúc bạn chơi vui vẻ và chiến thắng!", SwingConstants.CENTER);
             footerLabel.setFont(new Font("Arial", Font.ITALIC, 12));
             footerLabel.setForeground(Color.GRAY);
@@ -84,12 +118,16 @@ public class HalmaGUI extends JFrame {
         getContentPane().removeAll();
         
         // Mở rộng kích thước cửa sổ để hiển thị bàn cờ lớn 16x16
-        setSize(850, 850); 
+        setSize(640, 640);
         setLocationRelativeTo(null); // Căn giữa lại màn hình sau khi đổi size
+
+        selectedPoint = null;
+        validDestinations.clear();
+        playerTurn = true;
 
         // Khởi tạo bảng logic chứa luật chơi và vị trí quân cờ ban đầu
         logicBoard = new HalmaBoard();
-
+        ai = new HalmaAI(PieceType.PLAYER_2, aiDepth);
         allPlayerMoves = logicBoard.getAllValidMoves(PieceType.PLAYER_1);
         // Khởi tạo bảng giao diện đồ họa bàn cờ
         boardPanel = new GameBoardPanel();
@@ -221,6 +259,9 @@ public class HalmaGUI extends JFrame {
      * 5. HÀM XỬ LÝ CLICK CHUỘT VÀ ĐIỀU PHỐI LƯỢT CHƠI (BẠN -> AI)
      */
     private void handleCellClick(int row, int col) {
+        if (!playerTurn) {
+            return;
+        }
         // Trường hợp 1: Nếu click thẳng vào một quân cờ của mình -> Chọn quân đó (hoặc Đổi quân chọn)
         if (logicBoard.getPiece(row, col) == PieceType.PLAYER_1) {
             selectedPoint = new Point(row, col);
@@ -251,7 +292,8 @@ public class HalmaGUI extends JFrame {
             // Nếu ĐÚNG là click trúng vào ô chấm xanh gợi ý -> Tiến hành di chuyển ngay!
             if (targetDestination != null) {
                 Move playerMove = new Move(selectedPoint, targetDestination);
-                logicBoard.makeMove(playerMove, PieceType.PLAYER_1); 
+                logicBoard.makeMove(playerMove, PieceType.PLAYER_1);
+                playerTurn = false;
 
                 // Đi xong thì xóa trạng thái chọn để chuẩn bị lượt mới
                 selectedPoint = null;
@@ -260,12 +302,12 @@ public class HalmaGUI extends JFrame {
 
                 if (logicBoard.hasWon(PieceType.PLAYER_1)) {
                     JOptionPane.showMessageDialog(this, "Chúc mừng! Bạn đã CHIẾN THẮNG! 🎉");
+                    playerTurn = true;
                     return;
                 }
 
                 // --- LƯỢT TỰ ĐỘNG CỦA AI ĐỎ (CHẠY NGẦM) ---
                 new Thread(() -> {
-                    HalmaAI ai = new HalmaAI(PieceType.PLAYER_2);
                     Move aiMove = ai.findBestMove(logicBoard);
                     
                     if (aiMove != null) {
@@ -277,7 +319,8 @@ public class HalmaGUI extends JFrame {
 
                     // Đẩy dữ liệu về luồng vẽ màn hình
                     SwingUtilities.invokeLater(() -> {
-                        allPlayerMoves = nextPlayerMoves; 
+                        allPlayerMoves = nextPlayerMoves;
+                        playerTurn = true;
                         boardPanel.repaint(); // Vẽ quân AI lên màn hình
 
                         if (aiMove != null && logicBoard.hasWon(PieceType.PLAYER_2)) {
@@ -294,22 +337,5 @@ public class HalmaGUI extends JFrame {
         selectedPoint = null;
         validDestinations.clear();
         boardPanel.repaint();
-    }
-
-    /**
-     * 6. HÀM MAIN - ĐIỂM KÍCH HOẠT CHẠY GAME
-     */
-    public static void main(String[] args) {
-        // Cài đặt giao diện cửa sổ theo chuẩn hệ điều hành cho hiện đại, đẹp mắt
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // Tạo tiến trình an toàn khởi động GUI
-        SwingUtilities.invokeLater(() -> {
-            new HalmaGUI();
-        });
     }
 }

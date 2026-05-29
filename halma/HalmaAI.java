@@ -1,23 +1,34 @@
 package halma;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 public class HalmaAI {
-    private static final int MAX_DEPTH = 2; // Cấu hình tối ưu độ sâu suy nghĩ
+    private final int maxDepth; // Cấu hình tối ưu độ sâu suy nghĩ
     private final PieceType aiPlayer;
     private final PieceType opponent;
     
     private final Point aiTarget;
     private final Point oppTarget;
 
-    public HalmaAI(PieceType aiPlayer) {
+    public HalmaAI(PieceType aiPlayer, int maxDepth) {
         this.aiPlayer = aiPlayer;
-        this.opponent = (aiPlayer == PieceType.PLAYER_1) ? PieceType.PLAYER_2 : PieceType.PLAYER_1;
-        
-        this.aiTarget = (aiPlayer == PieceType.PLAYER_1) ? new Point(15, 15) : new Point(0, 0);
-        this.oppTarget = (opponent == PieceType.PLAYER_1) ? new Point(15, 15) : new Point(0, 0);
+        this.maxDepth = maxDepth;
+
+        this.opponent =
+                (aiPlayer == PieceType.PLAYER_1)
+                        ? PieceType.PLAYER_2
+                        : PieceType.PLAYER_1;
+
+        this.aiTarget =
+                (aiPlayer == PieceType.PLAYER_1)
+                        ? new Point(15, 15)
+                        : new Point(0, 0);
+
+        this.oppTarget =
+                (opponent == PieceType.PLAYER_1)
+                        ? new Point(15, 15)
+                        : new Point(0, 0);
     }
 
     public Move findBestMove(HalmaBoard board) {
@@ -31,7 +42,11 @@ public class HalmaAI {
             HalmaBoard simulatedBoard = new HalmaBoard(board);
             simulatedBoard.makeMove(move, aiPlayer);
             
-            int moveValue = minimax(simulatedBoard, MAX_DEPTH - 1, Integer.MIN_VALUE, Integer.MAX_VALUE, false);
+            int moveValue = minimax(simulatedBoard,
+                    maxDepth - 1,
+                    Integer.MIN_VALUE,
+                    Integer.MAX_VALUE,
+                    false);
             
             if (moveValue > bestValue) {
                 bestValue = moveValue;
@@ -139,13 +154,10 @@ public class HalmaAI {
     }
 
     private void sortMoves(List<Move> moves, Point target) {
-        moves.sort(new Comparator<Move>() {
-            @Override
-            public int compare(Move m1, Move m2) {
-                int dist1 = calculateDistance(m1.to(), target) - calculateDistance(m1.from(), target);
-                int dist2 = calculateDistance(m2.to(), target) - calculateDistance(m2.from(), target);
-                return Integer.compare(dist1, dist2);
-            }
+        moves.sort((m1, m2) -> {
+            int dist1 = calculateDistance(m1.to(), target) - calculateDistance(m1.from(), target);
+            int dist2 = calculateDistance(m2.to(), target) - calculateDistance(m2.from(), target);
+            return Integer.compare(dist1, dist2);
         });
     }
 }
