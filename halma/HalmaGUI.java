@@ -12,14 +12,22 @@ public class HalmaGUI extends JFrame {
 
     private HalmaBoard logicBoard;
     private GameBoardPanel boardPanel;
-    private Point selectedPoint = null;
-    // THÊM DÒNG NÀY VÀO: Lưu sẵn toàn bộ nước đi hợp lệ của người chơi để dùng luôn không cần tính lại
-    private List<Move> allPlayerMoves = new ArrayList<>();
-    // Danh sách lưu các ô đích hợp lệ để vẽ dấu chấm gợi ý
-    private List<Point> validDestinations = new ArrayList<>();
+    private Point selectedPoint = null; // Lưu toàn bộ nước đi hợp lệ của người chơi
+    private final List<Point> validDestinations = new ArrayList<>();
     private int aiDepth = 2;
+
     private HalmaAI ai;
+
     private boolean playerTurn = true;
+    private boolean jumpInProgress = false;
+
+    private Point jumpingPiece = null;
+
+    private boolean[][] visitedJumpPositions =
+            new boolean[HalmaBoard.SIZE]
+                    [HalmaBoard.SIZE];
+
+    private JButton endTurnButton;
 
     public HalmaGUI() {
         setTitle("Halma 16x16 - Trò chơi cờ Halma");
@@ -27,7 +35,7 @@ public class HalmaGUI extends JFrame {
         setSize(450, 355); // Kích thước vừa vặn cho Menu lúc đầu
         setLocationRelativeTo(null); // Hiển thị ở chính giữa màn hình
         
-        // BẮT ĐẦU: Hiển thị giao diện Menu chính
+        //Hiển thị giao diện Menu chính
         add(new MainMenuPanel(), BorderLayout.CENTER);
         setVisible(true);
     }
@@ -124,14 +132,34 @@ public class HalmaGUI extends JFrame {
         selectedPoint = null;
         validDestinations.clear();
         playerTurn = true;
+        jumpInProgress = false;
+        jumpingPiece = null;
 
-        // Khởi tạo bảng logic chứa luật chơi và vị trí quân cờ ban đầu
+        visitedJumpPositions =
+                new boolean[HalmaBoard.SIZE][HalmaBoard.SIZE];
+
+        // Khởi tạo bảng và vị trí quân cờ ban đầu
         logicBoard = new HalmaBoard();
         ai = new HalmaAI(PieceType.PLAYER_2, aiDepth);
-        allPlayerMoves = logicBoard.getAllValidMoves(PieceType.PLAYER_1);
-        // Khởi tạo bảng giao diện đồ họa bàn cờ
         boardPanel = new GameBoardPanel();
+
         add(boardPanel, BorderLayout.CENTER);
+
+        endTurnButton =
+                new JButton("Kết thúc lượt");
+
+        endTurnButton.setEnabled(false);
+
+        endTurnButton.addActionListener(e -> {
+
+            if (jumpInProgress) {
+                finishPlayerTurn();
+            }
+
+        });
+
+        add(endTurnButton,
+                BorderLayout.SOUTH);
 
         // Làm mới và vẽ lại toàn bộ cửa sổ JFrame
         revalidate();
@@ -142,7 +170,7 @@ public class HalmaGUI extends JFrame {
      * 3. LỚP BÀN CỜ GAME CHÍNH (Chứa lưới ô cờ 16x16)
      */
     private class GameBoardPanel extends JPanel {
-        private CellComponent[][] cells;
+        private final CellComponent[][] cells;
 
         public GameBoardPanel() {
             // Sử dụng Grid Layout chia đều 16 dòng, 16 cột
@@ -163,13 +191,13 @@ public class HalmaGUI extends JFrame {
      * 4. LỚP MỘT Ô CỜ CỤ THỂ (Tự định nghĩa cách vẽ nền, vẽ quân cờ, vẽ chấm gợi ý)
      */
     private class CellComponent extends JComponent {
-        private int row, col;
+        private final int row, col;
 
         public CellComponent(int row, int col) {
             this.row = row;
             this.col = col;
 
-            // Đăng ký sự kiện click chuột vào từng ô cờ đơn lẻ
+            // Click chuột vào từng ô cờ
             addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
@@ -182,28 +210,27 @@ public class HalmaGUI extends JFrame {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g.create();
-            // Bật chế độ chống răng cưa giúp hình vẽ quân cờ tròn mượt, không bị gai viền
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            // Bước A: Vẽ nền ô cờ màu xám nhạt
+            // Nền ô cờ màu xám nhạt
             g2.setColor(new Color(245, 245, 245));
             g2.fillRect(0, 0, getWidth(), getHeight());
 
-            // Bước B: Vẽ đường viền kẻ ô màu xám mảnh
+            // Đường viền kẻ ô màu xám mảnh
             g2.setColor(new Color(210, 210, 210));
             g2.drawRect(0, 0, getWidth(), getHeight());
 
-            // Bước C: Đánh dấu highlight mờ cho 2 góc chuồng xuất phát/đích
+            // Đánh dấu highlight mờ cho 2 góc chuồng xuất phát/đích
             int sumXY = row + col;
             if (sumXY <= 4) { 
-                // Chuồng trên bên trái (Góc đích của Đỏ / Góc xuất phát của bạn nếu đổi bên)
+                // Chuồng trên bên trái
                 drawCampHighlight(g2, new Color(65, 105, 225, 40)); // Xanh dương mờ
             } else if (sumXY >= 26) { 
-                // Chuồng dưới bên phải (Góc xuất phát của Đỏ)
+                // Chuồng dưới bên phải
                 drawCampHighlight(g2, new Color(220, 20, 60, 40)); // Đỏ mờ
             }
 
-            // Bước D: VẼ QUÂN CỜ HÌNH TRÒN ĐẬM (SOLID) ĐẸP MẮT
+            // VẼ QUÂN CỜ
             PieceType piece = logicBoard.getPiece(row, col);
             if (piece != PieceType.EMPTY) {
                 int padding = 6; // Khoảng cách từ quân cờ tới viền ô cờ
@@ -217,19 +244,19 @@ public class HalmaGUI extends JFrame {
                 }
                 g2.fill(circle); // Tô đặc màu hình tròn quân cờ
                 
-                // Vẽ thêm một đường viền đậm hơn một chút quanh quân cờ trông cho sắc nét
+                // Đường viền quanh quân cờ
                 g2.setColor(g2.getColor().darker());
                 g2.setStroke(new BasicStroke(1.5f));
                 g2.draw(circle);
             }
 
-            // Bước E: Vẽ Highlight nền xanh lá nếu ô cờ này đang được Người chơi click Chọn
+            // Highlight nền xanh lá nếu ô cờ này đang được click Chọn
             if (selectedPoint != null && selectedPoint.x() == row && selectedPoint.y() == col) {
                 g2.setColor(new Color(0, 255, 0, 80)); // Màu xanh lá trong suốt nhẹ
                 g2.fillRect(0, 0, getWidth(), getHeight());
             }
 
-            // Bước F: VẼ CHẤM TRÒN GỢI Ý NƯỚC ĐI CÓ THỂ ĐI ĐƯỢC
+            // VẼ CHẤM TRÒN GỢI Ý NƯỚC ĐI CÓ THỂ ĐI ĐƯỢC
             boolean isValidDest = false;
             for (Point p : validDestinations) {
                 if (p.x() == row && p.y() == col) {
@@ -248,7 +275,7 @@ public class HalmaGUI extends JFrame {
             g2.dispose();
         }
 
-        // Hàm phụ trợ vẽ các góc mờ đánh dấu chuồng
+        // Vẽ các góc mờ đánh dấu chuồng
         private void drawCampHighlight(Graphics2D g2, Color color) {
             g2.setColor(color);
             g2.fillRect(0, 0, getWidth(), getHeight());
@@ -256,26 +283,60 @@ public class HalmaGUI extends JFrame {
     }
 
     /**
-     * 5. HÀM XỬ LÝ CLICK CHUỘT VÀ ĐIỀU PHỐI LƯỢT CHƠI (BẠN -> AI)
+     * 5. HÀM XỬ LÝ CLICK CHUỘT VÀ ĐIỀU PHỐI LƯỢT CHƠI.
      */
     private void handleCellClick(int row, int col) {
         if (!playerTurn) {
             return;
         }
         // Trường hợp 1: Nếu click thẳng vào một quân cờ của mình -> Chọn quân đó (hoặc Đổi quân chọn)
-        if (logicBoard.getPiece(row, col) == PieceType.PLAYER_1) {
-            selectedPoint = new Point(row, col);
-            validDestinations.clear(); 
+        if (logicBoard.getPiece(row, col)
+                == PieceType.PLAYER_1)
+        {
+            Point clicked =
+                    new Point(row, col);
 
-            // Quét danh sách tính sẵn để nạp các ô chấm xanh gợi ý
-            for (Move m : allPlayerMoves) {
-                if (m.from().x() == selectedPoint.x() && m.from().y() == selectedPoint.y()) {
-                    validDestinations.add(m.to()); 
+            if (jumpInProgress)
+            {
+                if (!clicked.equals(jumpingPiece)) return;
+                selectedPoint = clicked;
+                validDestinations.clear();
+                List<Move> jumps = logicBoard
+                                .getSingleJumpMoves(
+                                        clicked,
+                                        visitedJumpPositions);
+                for (Move m : jumps)
+                {
+                    validDestinations.add(
+                            m.to()
+                    );
                 }
+                boardPanel.repaint();
+                return;
             }
-            
-            boardPanel.repaint(); 
-            return; // Chọn quân xong thì dừng, đợi click tiếp theo
+
+            selectedPoint = clicked;
+            validDestinations.clear();
+            List<Move> steps = logicBoard
+                    .getSingleStepMoves(
+                            clicked);
+            List<Move> jumps = logicBoard
+                    .getSingleJumpMoves(
+                            clicked,
+                            new boolean[HalmaBoard.SIZE]
+                                    [HalmaBoard.SIZE]
+                    );
+
+            for (Move m : steps)
+            {
+                validDestinations.add(m.to());
+            }
+            for (Move m : jumps)
+            {
+                validDestinations.add(m.to());
+            }
+            boardPanel.repaint();
+            return;
         }
         
         // Trường hợp 2: Nếu TRƯỚC ĐÓ ĐÃ CHỌN QUÂN, và click hiện tại là vào một ô trống
@@ -289,47 +350,76 @@ public class HalmaGUI extends JFrame {
                 }
             }
 
-            // Nếu ĐÚNG là click trúng vào ô chấm xanh gợi ý -> Tiến hành di chuyển ngay!
+            // Nếu click vào ô chấm xanh gợi ý thì di chuyển quân
             if (targetDestination != null) {
-                Move playerMove = new Move(selectedPoint, targetDestination);
-                logicBoard.makeMove(playerMove, PieceType.PLAYER_1);
-                playerTurn = false;
-
-                // Đi xong thì xóa trạng thái chọn để chuẩn bị lượt mới
-                selectedPoint = null;
-                validDestinations.clear();
-                boardPanel.repaint(); // Quân cờ của bạn nhảy tới ô mới lập tức!
+                Point oldPosition = selectedPoint;
+                Move playerMove =
+                        new Move(
+                                oldPosition,
+                                targetDestination
+                        );
+                logicBoard.makeMove(
+                        playerMove,
+                        PieceType.PLAYER_1
+                );
 
                 if (logicBoard.hasWon(PieceType.PLAYER_1)) {
-                    JOptionPane.showMessageDialog(this, "Chúc mừng! Bạn đã CHIẾN THẮNG! 🎉");
-                    playerTurn = true;
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "YOU WIN!!!"
+                    );
+                    playerTurn = false;
                     return;
                 }
 
-                // --- LƯỢT TỰ ĐỘNG CỦA AI ĐỎ (CHẠY NGẦM) ---
-                new Thread(() -> {
-                    Move aiMove = ai.findBestMove(logicBoard);
-                    
-                    if (aiMove != null) {
-                        logicBoard.makeMove(aiMove, PieceType.PLAYER_2); 
-                    }
-                    
-                    // Tính sẵn nước đi cho lượt sau của bạn trong lúc AI nghỉ
-                    List<Move> nextPlayerMoves = logicBoard.getAllValidMoves(PieceType.PLAYER_1);
+                boolean isJump =
+                        Math.abs(targetDestination.x()
+                                        - oldPosition.x()) > 1
+                                ||
+                                Math.abs(targetDestination.y()
+                                        - oldPosition.y()) > 1;
+                if (!isJump)
+                {
+                    finishPlayerTurn();
+                    return;
+                }
+                boolean firstJump = !jumpInProgress;
+                jumpInProgress = true;
+                jumpingPiece = targetDestination;
+                if (firstJump) {
+                    visitedJumpPositions =
+                            new boolean[
+                                    HalmaBoard.SIZE]
+                                    [HalmaBoard.SIZE];
+                    visitedJumpPositions[oldPosition.x()]
+                            [oldPosition.y()] = true;
+                }
 
-                    // Đẩy dữ liệu về luồng vẽ màn hình
-                    SwingUtilities.invokeLater(() -> {
-                        allPlayerMoves = nextPlayerMoves;
-                        playerTurn = true;
-                        boardPanel.repaint(); // Vẽ quân AI lên màn hình
+                selectedPoint = targetDestination;
 
-                        if (aiMove != null && logicBoard.hasWon(PieceType.PLAYER_2)) {
-                            JOptionPane.showMessageDialog(HalmaGUI.this, "AI Đỏ đã lấp đầy chuồng! BẠN ĐÃ THUA CUỘC! 🤖");
-                        }
-                    });
-                }).start();
-                
-                return; // Di chuyển xong thì thoát hàm
+                visitedJumpPositions[targetDestination.x()]
+                        [targetDestination.y()] = true;
+
+                validDestinations.clear();
+
+                List<Move> nextJumps = logicBoard
+                        .getSingleJumpMoves(
+                                targetDestination,
+                                visitedJumpPositions
+                        );
+
+                for (Move m : nextJumps)
+                {
+                    validDestinations.add(m.to());
+                }
+                if (nextJumps.isEmpty())
+                {
+                    finishPlayerTurn();
+                    return;
+                }
+                endTurnButton.setEnabled(true);
+                boardPanel.repaint();
+                return;
             }
         }
 
@@ -337,5 +427,45 @@ public class HalmaGUI extends JFrame {
         selectedPoint = null;
         validDestinations.clear();
         boardPanel.repaint();
+    }
+
+    private void finishPlayerTurn()
+    {
+        jumpInProgress = false;
+        jumpingPiece = null;
+        visitedJumpPositions = new boolean[HalmaBoard.SIZE][HalmaBoard.SIZE];
+        selectedPoint = null;
+        validDestinations.clear();
+        endTurnButton.setEnabled(false);
+        playerTurn = false;
+        boardPanel.repaint();
+        runAITurn();
+    }
+
+    private void runAITurn()
+    {
+        new Thread(() -> {
+            Move aiMove = ai.findBestMove(logicBoard);
+            if (aiMove != null) {
+                logicBoard.makeMove(
+                        aiMove,
+                        PieceType.PLAYER_2);
+            }
+
+            SwingUtilities.invokeLater(() -> {
+                playerTurn = true;
+                boardPanel.repaint();
+                if (aiMove != null &&
+                        logicBoard.hasWon(
+                                PieceType.PLAYER_2))
+                {
+
+                    JOptionPane.showMessageDialog(
+                            HalmaGUI.this,
+                            "AI Đỏ đã thắng!"
+                    );
+                }
+            });
+        }).start();
     }
 }

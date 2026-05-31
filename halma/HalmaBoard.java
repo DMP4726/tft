@@ -7,7 +7,7 @@ import java.util.Queue;
 
 public class HalmaBoard {
     public static final int SIZE = 16;
-    private PieceType[][] grid;
+    private final PieceType[][] grid;
 
     // 8 hướng di chuyển xung quanh một ô cờ (Lên, xuống, trái, phải và 4 đường chéo)
     private static final int[][] DIRECTIONS = {
@@ -120,6 +120,57 @@ public class HalmaBoard {
         }
     }
 
+    public List<Move> getSingleJumpMoves(
+            Point start,
+            boolean[][] visited)
+    {
+        List<Move> moves = new ArrayList<>();
+
+        for (int[] dir : DIRECTIONS) {
+
+            int nx = start.x() + dir[0];
+            int ny = start.y() + dir[1];
+
+            Point neighbor = new Point(nx, ny);
+
+            if (!neighbor.isValid())
+                continue;
+
+            if (grid[nx][ny] == PieceType.EMPTY)
+                continue;
+
+            int lx = nx + dir[0];
+            int ly = ny + dir[1];
+
+            Point landing = new Point(lx, ly);
+
+            if (!landing.isValid())
+                continue;
+
+            if (grid[lx][ly] != PieceType.EMPTY)
+                continue;
+
+            if (visited[lx][ly])
+                continue;
+
+            moves.add(
+                    new Move(start, landing)
+            );
+        }
+
+        return moves;
+    }
+
+    public List<Move> getSingleStepMoves(
+            Point start)
+    {
+        List<Move> moves = new ArrayList<>();
+
+        getSingleSteps(start, moves);
+
+        return moves;
+    }
+
     /**
      * KIỂM TRA ĐIỀU KIỆN CHIẾN THẮNG CHẶT CHẼ (Tích hợp luật Anti-Troll)
      */
@@ -151,11 +202,9 @@ public class HalmaBoard {
         // - Chuồng đích đã bị lấp đầy kín toàn bộ không còn ô trống (Tổng quân ta + quân cản đường của địch = 15)
         // - Bản thân người chơi đã rút hết toàn bộ quân ra khỏi nhà mình (Không giữ quân ở nhà ăn vạ)
         // - Người chơi đã đưa được ít nhất 5 quân sang chuồng đối phương (Để tránh kích hoạt nhầm lúc đầu game)
-        if ((playerInTarget + oppInTarget == 15) && playerInOwnCamp == 0 && playerInTarget >= 5) {
-            return true;
-        }
-
-        return false;
+        return (playerInTarget + oppInTarget == 15) &&
+                playerInOwnCamp == 0 &&
+                playerInTarget >= 5;
     }
 
     // Hàm kiểm tra xem tọa độ (x, y) có thuộc phạm vi chuồng ĐÍCH của người chơi không
