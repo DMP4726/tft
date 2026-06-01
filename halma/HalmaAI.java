@@ -37,17 +37,19 @@ public class HalmaAI {
         
         List<Move> moves = board.getAllValidMoves(aiPlayer);
         sortMoves(moves, aiTarget);
-        
+
         for (Move move : moves) {
             HalmaBoard simulatedBoard = new HalmaBoard(board);
             simulatedBoard.makeMove(move, aiPlayer);
-            
-            int moveValue = minimax(simulatedBoard,
-                    maxDepth - 1,
-                    Integer.MIN_VALUE,
-                    Integer.MAX_VALUE,
-                    false);
-            
+            if (simulatedBoard.hasWon(aiPlayer)) {
+                return move;
+            }
+            int moveValue =
+                    minimax(simulatedBoard,
+                            maxDepth - 1,
+                            Integer.MIN_VALUE,
+                            Integer.MAX_VALUE,
+                            false);
             if (moveValue > bestValue) {
                 bestValue = moveValue;
                 bestMove = move;
@@ -57,6 +59,12 @@ public class HalmaAI {
     }
 
     private int minimax(HalmaBoard board, int depth, int alpha, int beta, boolean isMaximizing) {
+        if (board.hasWon(aiPlayer)) {
+            return 1_000_000;
+        }
+        if (board.hasWon(opponent)) {
+            return -1_000_000;
+        }
         if (depth == 0) {
             return evaluateBoard(board);
         }
@@ -108,25 +116,34 @@ public class HalmaAI {
         // 1. TÍNH ĐIỂM CHO QUÂN AI (Ưu tiên Tấn Công - Chạy đua)
         Point aiCenterOfMass = calculateCenterOfMass(aiPieces);
         for (Point p : aiPieces) {
-            score -= calculateDistance(p, aiTarget) * 20; // Nhân 20 để AI máu chạy về đích hơn
-            
-            if (isInOwnCamp(p, aiPlayer)) score -= 200; // Phạt cực nặng nếu AI chây ì ở nhà
-            if (isInTargetCamp(p, aiPlayer)) score += 500; // THƯỞNG KHỔNG LỒ NẾU VÀO ĐÍCH (Áp đảo mọi điểm khác)
-            
-            if (aiCenterOfMass != null) score -= calculateDistance(p, aiCenterOfMass) * 2;
+            score -= calculateDistance(p, aiTarget) * 20;
+            if (isInOwnCamp(p, aiPlayer)) {
+                score -= 200;
+            }
+            if (isInTargetCamp(p, aiPlayer)) {
+                score += 500;
+            }
+            if (aiCenterOfMass != null) {
+                score -= calculateDistance(p, aiCenterOfMass) * 2;
+            }
         }
 
         // 2. TÍNH ĐIỂM CHO QUÂN ĐỐI PHƯƠNG (Giảm trọng số Phòng Thủ - Bớt lo chuyện bao đồng)
         Point oppCenterOfMass = calculateCenterOfMass(oppPieces);
         for (Point p : oppPieces) {
-            score += calculateDistance(p, oppTarget) * 5; // Chỉ nhân 5 để AI bớt quan tâm việc địch chạy nhanh hay chậm
+            score += calculateDistance(p, oppTarget) * 5;
             
-            if (isInOwnCamp(p, opponent)) score += 10; // GIẢM TỪ 150 XUỐNG 10! Hết cửa làm Troll ăn điểm!
-            if (isInTargetCamp(p, opponent)) score -= 50;
+            if (isInOwnCamp(p, opponent)) {
+                score += 10;
+            }
+            if (isInTargetCamp(p, opponent)) {
+                score -= 50;
+            }
             
-            if (oppCenterOfMass != null) score += calculateDistance(p, oppCenterOfMass);
+            if (oppCenterOfMass != null) {
+                score += calculateDistance(p, oppCenterOfMass);
+            }
         }
-
         return score;
     }
     private int calculateDistance(Point p, Point target) {

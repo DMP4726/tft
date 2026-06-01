@@ -226,23 +226,23 @@ public class HalmaBoard {
     }
     
     // TRONG FILE HalmaBoard.java
-public List<Move> getAllValidMoves(PieceType player) {
-    List<Move> validMoves = new ArrayList<>();
-    // Quét toàn bộ bàn cờ tìm quân của người chơi
-    for (int x = 0; x < SIZE; x++) {
-        for (int y = 0; y < SIZE; y++) {
-            if (grid[x][y] == player) {
-                Point startPoint = new Point(x, y);
-                
-                // --- KIỂM TRA DÒNG NÀY ---
-                // Nó bắt buộc phải tồn tại và không bị comment (//)
-                getSingleSteps(startPoint, validMoves); 
-                // -------------------------
+    public List<Move> getAllValidMoves(PieceType player) {
+        List<Move> validMoves = new ArrayList<>();
+        // Quét toàn bộ bàn cờ tìm quân của người chơi
+        for (int x = 0; x < SIZE; x++) {
+            for (int y = 0; y < SIZE; y++) {
+                if (grid[x][y] == player) {
+                    Point startPoint = new Point(x, y);
 
-                getChainJumps(startPoint, validMoves);
+                    // --- KIỂM TRA DÒNG NÀY ---
+                    // Nó bắt buộc phải tồn tại và không bị comment (//)
+                    getSingleSteps(startPoint, validMoves);
+                    // -------------------------
+
+                    getChainJumps(startPoint, validMoves);
+                }
             }
         }
+        return validMoves;
     }
-    return validMoves;
-}
 }
