@@ -60,10 +60,10 @@ public class HalmaAI {
 
     private int minimax(HalmaBoard board, int depth, int alpha, int beta, boolean isMaximizing) {
         if (board.hasWon(aiPlayer)) {
-            return 1_000_000;
+            return 1_000_000 + depth;
         }
         if (board.hasWon(opponent)) {
-            return -1_000_000;
+            return -1_000_000 - depth;
         }
         if (depth == 0) {
             return evaluateBoard(board);
