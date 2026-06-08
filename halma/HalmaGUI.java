@@ -33,13 +33,11 @@ public class HalmaGUI extends JFrame {
 
     private JButton endTurnButton;
 
-    private JPanel sidePanel;
     private JLabel turnLabel;
     private JButton optionButton;
 
     private JLabel countTurnLable;
     private JLabel nodesLabel;
-    private JLabel cutoffsLabel;
     private JLabel timeLabel;
     private int turn;
 
@@ -162,7 +160,7 @@ public class HalmaGUI extends JFrame {
         playerTurn = (humanPlayer == PieceType.PLAYER_1);
         jumpInProgress = false;
         jumpingPiece = null;
-        turn = 0;
+        turn = 1;
 
         visitedJumpPositions =
                 new boolean[HalmaBoard.SIZE][HalmaBoard.SIZE];
@@ -184,7 +182,7 @@ public class HalmaGUI extends JFrame {
     }
 
     private void createSidePanel() {
-        sidePanel = new JPanel();
+        JPanel sidePanel = new JPanel();
         sidePanel.setLayout(
                 new BoxLayout(
                         sidePanel, BoxLayout.Y_AXIS
@@ -203,7 +201,6 @@ public class HalmaGUI extends JFrame {
         endTurnButton = new JButton("Kết thúc lượt");
         countTurnLable = new JLabel("Turn: 0");
         nodesLabel = new JLabel("Nodes: 0");
-        cutoffsLabel = new JLabel("Cutoffs: 0");
         timeLabel = new JLabel("Time: 0 ms");
         updateTurnDisplay();
         sidePanel.add(Box.createVerticalStrut(20));
@@ -222,8 +219,6 @@ public class HalmaGUI extends JFrame {
         sidePanel.add(countTurnLable);
         sidePanel.add(Box.createVerticalStrut(10));
         sidePanel.add(nodesLabel);
-        sidePanel.add(Box.createVerticalStrut(10));
-        sidePanel.add(cutoffsLabel);
         sidePanel.add(Box.createVerticalStrut(10));
         sidePanel.add(timeLabel);
 
@@ -269,10 +264,6 @@ public class HalmaGUI extends JFrame {
         nodesLabel.setText(
                 "Nodes: "
                         + ai.getNodesVisited());
-
-        cutoffsLabel.setText(
-                "Cut-offs: "
-                        + ai.getCutoffs());
 
         timeLabel.setText(
                 "Time: "
@@ -475,7 +466,6 @@ public class HalmaGUI extends JFrame {
                         playerMove,
                         humanPlayer
                 );
-                turn++;
 
                 if (logicBoard.hasWon(humanPlayer)) {
 
@@ -579,7 +569,7 @@ public class HalmaGUI extends JFrame {
     private void runAITurn()
     {
         new Thread(() -> {
-            Move aiMove = ai.findBestMove(logicBoard);
+            Move aiMove = ai.findBestMove(logicBoard); // để chuyển sang không dùng alpha-beta thì đổi thành hàm findBestMoveRep(logicBoard)
             if (aiMove != null) {
                 logicBoard.makeMove(
                         aiMove,
@@ -588,6 +578,7 @@ public class HalmaGUI extends JFrame {
 
             SwingUtilities.invokeLater(() -> {
                 playerTurn = true;
+                turn++;
                 updateTurnDisplay();
                 boardPanel.repaint();
                 if (aiMove != null &&

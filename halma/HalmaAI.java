@@ -7,12 +7,11 @@ public class HalmaAI {
     private final int maxDepth; // Cấu hình tối ưu độ sâu suy nghĩ
     private final PieceType aiPlayer;
     private final PieceType opponent;
-    
+
     private final Point aiTarget;
     private final Point oppTarget;
 
     private long nodesVisited;
-    private long cutoffs;
     private long thinkingTime;
 
     public HalmaAI(PieceType aiPlayer, int maxDepth) {
@@ -39,23 +38,18 @@ public class HalmaAI {
         return nodesVisited;
     }
 
-    public long getCutoffs() {
-        return cutoffs;
-    }
-
     public long getThinkingTime() {
         return thinkingTime;
     }
 
     public Move findBestMove(HalmaBoard board) {
         nodesVisited = 0;
-        cutoffs = 0;
 
         long startTime = System.currentTimeMillis();
 
         int bestValue = Integer.MIN_VALUE;
         Move bestMove = null;
-        
+
         List<Move> moves = board.getAllValidMoves(aiPlayer);
         sortMoves(moves, aiTarget);
 
@@ -79,6 +73,39 @@ public class HalmaAI {
         thinkingTime = System.currentTimeMillis() - startTime;
         return bestMove;
     }
+
+    /** Phiên bản không dùng alpha-beta
+    public Move findBestMoveRep(HalmaBoard board) {
+        nodesVisited = 0;
+        cutoffs = 0;
+
+        long startTime = System.currentTimeMillis();
+
+        int bestValue = Integer.MIN_VALUE;
+        Move bestMove = null;
+
+        List<Move> moves = board.getAllValidMoves(aiPlayer);
+        sortMoves(moves, aiTarget);
+
+        for (Move move : moves) {
+            HalmaBoard simulatedBoard = new HalmaBoard(board);
+            simulatedBoard.makeMove(move, aiPlayer);
+            if (simulatedBoard.hasWon(aiPlayer)) {
+                return move;
+            }
+            int moveValue =
+                    minimaxRep(simulatedBoard,
+                            maxDepth - 1,
+                            false);
+            if (moveValue > bestValue) {
+                bestValue = moveValue;
+                bestMove = move;
+            }
+        }
+        thinkingTime = System.currentTimeMillis() - startTime;
+        return bestMove;
+    }
+     */
 
     private int minimax(HalmaBoard board, int depth, int alpha, int beta, boolean isMaximizing) {
         nodesVisited++;
@@ -104,7 +131,6 @@ public class HalmaAI {
                 maxEval = Math.max(maxEval, eval);
                 alpha = Math.max(alpha, eval);
                 if (beta <= alpha) {
-                    cutoffs++;
                     break;
                 }
             }
@@ -121,7 +147,6 @@ public class HalmaAI {
                 minEval = Math.min(minEval, eval);
                 beta = Math.min(beta, eval);
                 if (beta <= alpha) {
-                    cutoffs++;
                     break;
                 }
             }
@@ -129,7 +154,57 @@ public class HalmaAI {
         }
     }
 
-   private int evaluateBoard(HalmaBoard board) {
+    /** Phiên bản không dùng alpha-beta
+    private int minimaxRep(HalmaBoard board, int depth, boolean isMaximizing) {
+        nodesVisited++;
+
+        if (board.hasWon(aiPlayer)) {
+            return 1_000_000 + depth;
+        }
+        if (board.hasWon(opponent)) {
+            return -1_000_000 - depth;
+        }
+        if (depth == 0) {
+            return evaluateBoard(board);
+        }
+
+        if (isMaximizing) {
+            int maxEval = Integer.MIN_VALUE;
+
+            List<Move> moves = board.getAllValidMoves(aiPlayer);
+            sortMoves(moves, aiTarget);
+
+            for (Move move : moves) {
+                HalmaBoard sim = new HalmaBoard(board);
+                sim.makeMove(move, aiPlayer);
+
+                int eval = minimaxRep(sim, depth - 1, false);
+
+                maxEval = Math.max(maxEval, eval);
+            }
+
+            return maxEval;
+        } else {
+            int minEval = Integer.MAX_VALUE;
+
+            List<Move> moves = board.getAllValidMoves(opponent);
+            sortMoves(moves, oppTarget);
+
+            for (Move move : moves) {
+                HalmaBoard sim = new HalmaBoard(board);
+                sim.makeMove(move, opponent);
+
+                int eval = minimaxRep(sim, depth - 1, true);
+
+                minEval = Math.min(minEval, eval);
+            }
+
+            return minEval;
+        }
+    }
+    */
+
+    private int evaluateBoard(HalmaBoard board) {
         int score = 0;
         List<Point> aiPieces = new ArrayList<>();
         List<Point> oppPieces = new ArrayList<>();
@@ -161,14 +236,14 @@ public class HalmaAI {
         Point oppCenterOfMass = calculateCenterOfMass(oppPieces);
         for (Point p : oppPieces) {
             score += calculateDistance(p, oppTarget) * 5;
-            
+
             if (isInOwnCamp(p, opponent)) {
                 score += 10;
             }
             if (isInTargetCamp(p, opponent)) {
                 score -= 50;
             }
-            
+
             if (oppCenterOfMass != null) {
                 score += calculateDistance(p, oppCenterOfMass);
             }
