@@ -11,6 +11,10 @@ public class HalmaAI {
     private final Point aiTarget;
     private final Point oppTarget;
 
+    private long nodesVisited;
+    private long cutoffs;
+    private long thinkingTime;
+
     public HalmaAI(PieceType aiPlayer, int maxDepth) {
         this.aiPlayer = aiPlayer;
         this.maxDepth = maxDepth;
@@ -31,7 +35,24 @@ public class HalmaAI {
                         : new Point(0, 0);
     }
 
+    public long getNodesVisited() {
+        return nodesVisited;
+    }
+
+    public long getCutoffs() {
+        return cutoffs;
+    }
+
+    public long getThinkingTime() {
+        return thinkingTime;
+    }
+
     public Move findBestMove(HalmaBoard board) {
+        nodesVisited = 0;
+        cutoffs = 0;
+
+        long startTime = System.currentTimeMillis();
+
         int bestValue = Integer.MIN_VALUE;
         Move bestMove = null;
         
@@ -55,10 +76,12 @@ public class HalmaAI {
                 bestMove = move;
             }
         }
+        thinkingTime = System.currentTimeMillis() - startTime;
         return bestMove;
     }
 
     private int minimax(HalmaBoard board, int depth, int alpha, int beta, boolean isMaximizing) {
+        nodesVisited++;
         if (board.hasWon(aiPlayer)) {
             return 1_000_000 + depth;
         }
@@ -80,7 +103,10 @@ public class HalmaAI {
                 int eval = minimax(sim, depth - 1, alpha, beta, false);
                 maxEval = Math.max(maxEval, eval);
                 alpha = Math.max(alpha, eval);
-                if (beta <= alpha) break;
+                if (beta <= alpha) {
+                    cutoffs++;
+                    break;
+                }
             }
             return maxEval;
         } else {
@@ -94,7 +120,10 @@ public class HalmaAI {
                 int eval = minimax(sim, depth - 1, alpha, beta, true);
                 minEval = Math.min(minEval, eval);
                 beta = Math.min(beta, eval);
-                if (beta <= alpha) break;
+                if (beta <= alpha) {
+                    cutoffs++;
+                    break;
+                }
             }
             return minEval;
         }

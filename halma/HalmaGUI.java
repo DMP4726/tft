@@ -37,6 +37,12 @@ public class HalmaGUI extends JFrame {
     private JLabel turnLabel;
     private JButton optionButton;
 
+    private JLabel countTurnLable;
+    private JLabel nodesLabel;
+    private JLabel cutoffsLabel;
+    private JLabel timeLabel;
+    private int turn;
+
     public HalmaGUI() {
         setTitle("Halma 16x16 - Trò chơi cờ Halma");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -101,13 +107,19 @@ public class HalmaGUI extends JFrame {
             // Hàng 4: Nút bấm PLAY GAME để vào bàn cờ
             JPanel playPanel = new JPanel();
             playPanel.setOpaque(false);
+            JButton playButton = getJButton(difficultyBox, sideBox);
+            playPanel.add(playButton);
+            add(playPanel);
+        }
+
+        private JButton getJButton(JComboBox<String> difficultyBox, JComboBox<String> sideBox) {
             JButton playButton = new JButton("PLAY GAME");
             playButton.setFont(new Font("Arial", Font.BOLD, 20));
             playButton.setBackground(new Color(50, 205, 50)); // Nút màu xanh lá nổi bật
             playButton.setForeground(Color.WHITE);
             playButton.setFocusPainted(false);
             playButton.setPreferredSize(new Dimension(220, 50));
-            
+
             // Sự kiện click nút Play
             playButton.addActionListener(e -> {
                 switch (difficultyBox.getSelectedIndex()) {
@@ -130,14 +142,7 @@ public class HalmaGUI extends JFrame {
                 }
                 startGame(); // Chuyển sang màn hình bàn cờ
             });
-            playPanel.add(playButton);
-            add(playPanel);
-
-            // Hàng 5: Dòng chữ thông tin chân trang
-            JLabel footerLabel = new JLabel("Chúc bạn chơi vui vẻ và chiến thắng!", SwingConstants.CENTER);
-            footerLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-            footerLabel.setForeground(Color.GRAY);
-            add(footerLabel);
+            return playButton;
         }
     }
 
@@ -147,7 +152,7 @@ public class HalmaGUI extends JFrame {
     private void startGame() {
         // Xóa sạch phần Panel Menu cũ ra khỏi cửa sổ chính
         getContentPane().removeAll();
-        
+
         // Mở rộng kích thước cửa sổ để hiển thị bàn cờ lớn 16x16
         setSize(820, 640);
         setLocationRelativeTo(null); // Căn giữa lại màn hình sau khi đổi size
@@ -157,6 +162,7 @@ public class HalmaGUI extends JFrame {
         playerTurn = (humanPlayer == PieceType.PLAYER_1);
         jumpInProgress = false;
         jumpingPiece = null;
+        turn = 0;
 
         visitedJumpPositions =
                 new boolean[HalmaBoard.SIZE][HalmaBoard.SIZE];
@@ -169,27 +175,6 @@ public class HalmaGUI extends JFrame {
         add(boardPanel, BorderLayout.CENTER);
 
         createSidePanel();
-
-        endTurnButton =
-                new JButton("Kết thúc lượt");
-
-        endTurnButton.setEnabled(false);
-
-        endTurnButton.addActionListener(e -> {
-
-            if (jumpInProgress) {
-                finishPlayerTurn();
-            }
-
-        });
-
-        sidePanel.add(
-                Box.createVerticalStrut(20)
-        );
-
-        sidePanel.add(
-                endTurnButton
-        );
         // Làm mới và vẽ lại toàn bộ cửa sổ JFrame
         revalidate();
         repaint();
@@ -205,18 +190,43 @@ public class HalmaGUI extends JFrame {
                         sidePanel, BoxLayout.Y_AXIS
                 )
         );
+        sidePanel.setBorder(
+                BorderFactory.createEmptyBorder(
+                        20, 15, 20, 15
+                )
+        );
         sidePanel.setPreferredSize(
                 new Dimension(180, 0)
         );
         turnLabel = new JLabel();
         optionButton = new JButton("Tùy chọn");
+        endTurnButton = new JButton("Kết thúc lượt");
+        countTurnLable = new JLabel("Turn: 0");
+        nodesLabel = new JLabel("Nodes: 0");
+        cutoffsLabel = new JLabel("Cutoffs: 0");
+        timeLabel = new JLabel("Time: 0 ms");
         updateTurnDisplay();
         sidePanel.add(Box.createVerticalStrut(20));
         sidePanel.add(turnLabel);
         sidePanel.add(Box.createVerticalStrut(10));
-        sidePanel.add(Box.createVerticalStrut(20));
         sidePanel.add(optionButton);
+        sidePanel.add(Box.createVerticalStrut(20));
+        sidePanel.add(endTurnButton);
+        sidePanel.add(Box.createVerticalStrut(20));
         createOptionMenu();
+        endTurnButton.addActionListener(e -> {
+            if (jumpInProgress) {
+                finishPlayerTurn();
+            }
+        });
+        sidePanel.add(countTurnLable);
+        sidePanel.add(Box.createVerticalStrut(10));
+        sidePanel.add(nodesLabel);
+        sidePanel.add(Box.createVerticalStrut(10));
+        sidePanel.add(cutoffsLabel);
+        sidePanel.add(Box.createVerticalStrut(10));
+        sidePanel.add(timeLabel);
+
         add(sidePanel, BorderLayout.EAST);
     }
 
@@ -233,11 +243,11 @@ public class HalmaGUI extends JFrame {
         );
 
         menuItem.addActionListener(e ->
-                returnToMainMenu()
+                returnMenu()
         );
     }
 
-    private void returnToMainMenu() {
+    private void returnMenu() {
         getContentPane().removeAll();
         setSize(450, 355);
         add(new MainMenuPanel(), BorderLayout.CENTER);
@@ -253,6 +263,21 @@ public class HalmaGUI extends JFrame {
             color = (aiPlayer == PieceType.PLAYER_1) ? "Xanh" : "Đỏ";
         }
         turnLabel.setText("Lượt: " + color);
+        countTurnLable.setText(
+                "Turn: " + turn);
+
+        nodesLabel.setText(
+                "Nodes: "
+                        + ai.getNodesVisited());
+
+        cutoffsLabel.setText(
+                "Cut-offs: "
+                        + ai.getCutoffs());
+
+        timeLabel.setText(
+                "Time: "
+                        + ai.getThinkingTime()
+                        + " ms");
     }
 
     /**
@@ -450,6 +475,7 @@ public class HalmaGUI extends JFrame {
                         playerMove,
                         humanPlayer
                 );
+                turn++;
 
                 if (logicBoard.hasWon(humanPlayer)) {
 
@@ -461,8 +487,8 @@ public class HalmaGUI extends JFrame {
                     int choice =
                             JOptionPane.showOptionDialog(
                                     this,
-                                    "YOU WIN!!!",
-                                    "Game Over",
+                                    "VICTORY!!!",
+                                    "Winner",
                                     JOptionPane.DEFAULT_OPTION,
                                     JOptionPane.INFORMATION_MESSAGE,
                                     null,
@@ -473,7 +499,7 @@ public class HalmaGUI extends JFrame {
                     if (choice == 0) {
                         startGame();
                     } else {
-                        returnToMainMenu();
+                        returnMenu();
                     }
 
                     return;
@@ -575,7 +601,7 @@ public class HalmaGUI extends JFrame {
                     int choice =
                             JOptionPane.showOptionDialog(
                                     HalmaGUI.this,
-                                    "AI đã thắng!",
+                                    "DEFEAT!",
                                     "Game Over",
                                     JOptionPane.DEFAULT_OPTION,
                                     JOptionPane.INFORMATION_MESSAGE,
@@ -587,7 +613,7 @@ public class HalmaGUI extends JFrame {
                     if (choice == 0) {
                         startGame();
                     } else {
-                        returnToMainMenu();
+                        returnMenu();
                     }
                 }
             });
